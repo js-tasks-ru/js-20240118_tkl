@@ -4,14 +4,21 @@
  * @param {string} [param="asc"] param - the sorting type "asc" or "desc"
  * @returns {string[]}
  */
-export function sortStrings(arr, param = "asc") {
+
+function compareStringsBy(param) {
   const collator = new Intl.Collator(["ru", "en"], { caseFirst: "upper" });
 
-  const sortedArr = [...arr].sort((a, b) => collator.compare(a, b));
+  return (a, b) => {
+    if(param === "desc") {
+      return collator.compare(b, a);
+    }
 
-  if (param === "desc") {
-    sortedArr.reverse();
-  }
+    return collator.compare(a, b);
+  };
+}
+
+export function sortStrings(arr, param = "asc") {
+  const sortedArr = [...arr].sort(compareStringsBy(param));
 
   return sortedArr;
 }
