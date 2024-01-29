@@ -10,7 +10,7 @@ export function createGetter(path) {
     let value = obj;
 
     for (let i = 0; i < keys.length; i++) {
-      if (value === undefined || value === null) return undefined;
+      if (!(keys[i] in value)) return undefined;
 
       value = value[keys[i]];
     }
