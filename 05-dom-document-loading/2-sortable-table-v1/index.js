@@ -18,45 +18,47 @@ export default class SortableTable {
   get #template() {
     return `
       <div data-element="productsContainer" class="products-list__container">
-      <div class="sortable-table">
-    
-        <div data-element="header" class="sortable-table__header sortable-table__row">
-          ${this.#renderHeaderItems()}
-        </div>
-    
-        <div data-element="body" class="sortable-table__body">
-          ${this.#renderBodyItems()}
-        </div>
-    
-        <div data-element="loading" class="loading-line sortable-table__loading-line"></div>
-    
-        <div data-element="emptyPlaceholder" class="sortable-table__empty-placeholder">
-          <div>
-            <p>No products satisfies your filter criteria</p>
-            <button type="button" class="button-primary-outline">Reset all filters</button>
+        <div class="sortable-table">
+      
+          <div data-element="header" class="sortable-table__header sortable-table__row">
+            ${this.#renderHeaderItems()}
           </div>
+      
+          <div data-element="body" class="sortable-table__body">
+            ${this.#renderBodyItems()}
+          </div>
+      
+          <div data-element="loading" class="loading-line sortable-table__loading-line"></div>
+      
+          <div data-element="emptyPlaceholder" class="sortable-table__empty-placeholder">
+            <div>
+              <p>No products satisfies your filter criteria</p>
+              <button type="button" class="button-primary-outline">Reset all filters</button>
+            </div>
+          </div>
+      
         </div>
-    
       </div>
-    </div>
-    `;
+      `;
   }
 
   #getSubElements() {
     const elements = this.element.querySelectorAll("[data-element]");
 
-    return [...elements].reduce((subElements, currentElement) => {
+    const accumulateSubElements = (subElements, currentElement) => {
       subElements[currentElement.dataset.element] = currentElement;
 
       return subElements;
-    }, {});
+    };
+
+    return [...elements].reduce(accumulateSubElements, {});
   }
 
   #getImageTemplate() {
-    return (
-      this.#headerConfig.find((config) => typeof config.template === "function")
-        ?.template || ""
-    );
+    const isTemplateFunction = (config) =>
+      typeof config.template === "function";
+
+    return this.#headerConfig.find(isTemplateFunction)?.template || "";
   }
 
   #renderTemplate() {
@@ -64,17 +66,14 @@ export default class SortableTable {
   }
 
   #renderHeaderItems() {
-    const bodyItems = this.#headerConfig.map((item) => {
-      if (item.id !== this.#fieldValue)
-        return new HeaderItem(item).renderTemplate();
+    const getHeaderItemConfig = (item) =>
+      item.id !== this.#fieldValue
+        ? item
+        : { ...item, order: this.#orderValue };
 
-      return new HeaderItem({
-        ...item,
-        order: this.#orderValue,
-      }).renderTemplate();
-    });
-
-    return bodyItems.join("");
+    return this.#headerConfig
+      .map((item) => new HeaderItem(getHeaderItemConfig(item)).renderTemplate())
+      .join("");
   }
 
   #renderBodyItems() {
@@ -88,26 +87,26 @@ export default class SortableTable {
     return bodyItems.join("");
   }
 
-  #sortBy(columnToSort) {
-    const { sortType } = columnToSort;
-
-    let compareMethod = (a, b) => {
+  #getSortMethod(sortType) {
+    let sortMethod = (a, b) => {
       const valA = a[this.#fieldValue];
       const valB = b[this.#fieldValue];
 
-      if (sortType === "string") {
-        const collator = new Intl.Collator(["ru", "en"], {
-          caseFirst: "upper",
-        });
-        return collator.compare(valA, valB);
-      } else {
-        return valA - valB;
-      }
+      const methods = {
+        string: (locales = ["ru", "en"], options = { caseFirst: "upper" }) => {
+          return new Intl.Collator(locales, options).compare(valA, valB);
+        },
+        number: () => valA - valB,
+      };
+
+      return methods[sortType]();
     };
 
-    return this.#orderValue === "desc"
-      ? (a, b) => -compareMethod(a, b)
-      : compareMethod;
+    if (this.#orderValue === "desc") {
+      return (a, b) => -sortMethod(a, b);
+    }
+
+    return sortMethod;
   }
 
   #hasSortChanged(fieldValue, orderValue) {
@@ -118,32 +117,35 @@ export default class SortableTable {
     this.subElements.body.innerHTML = this.#renderBodyItems();
   }
 
-  #updateHeader(fieldValue = "", orderValue = "") {
-    this.subElements.header.innerHTML = this.#renderHeaderItems(
-      fieldValue,
-      orderValue
-    );
+  #updateHeader() {
+    this.subElements.header.innerHTML = this.#renderHeaderItems();
   }
 
   sort(fieldValue, orderValue) {
+    // Check if the sort field or order has changed
     if (!this.#hasSortChanged(fieldValue, orderValue)) return;
 
-    const columnToSort = this.#headerConfig.find(
-      (column) => column.id === fieldValue
-    );
+    // Find the column configuration for the specified field and destructure its properties
+    const columnConfig = this.#headerConfig.find(column => column.id === fieldValue);
+    const { sortable, sortType } = columnConfig || {};
 
-    if (!columnToSort || !columnToSort.sortable) return;
+    // Check if the column is found and is sortable
+    if (!sortable) return;
 
+    // Update the current sorting state
     this.#fieldValue = fieldValue;
     this.#orderValue = orderValue;
 
-    this.#data = [...this.#data].sort(this.#sortBy(columnToSort));
+    // Sort the data using the sort type from the column configuration
+    this.#data = this.#data.sort(this.#getSortMethod(sortType));
 
+    // Update the table display
     this.#updateBody();
     this.#updateHeader();
   }
 
   destroy() {
     this.element.remove();
+    this.subElements = {};
   }
 }
