@@ -21,7 +21,7 @@ export default class SortableTable {
         <div class="sortable-table">
       
           <div data-element="header" class="sortable-table__header sortable-table__row">
-            ${this.#renderFields()}
+            ${this.#renderHeader()}
           </div>
       
           <div data-element="body" class="sortable-table__body">
@@ -58,7 +58,7 @@ export default class SortableTable {
     return createElementFromHTML(this.#template);
   }
 
-  #renderFields() {
+  #renderHeader() {
     const getFieldOrderValue = ({ id }) => (id === this.#fieldValue) ? this.#orderValue : "";
 
     return this.#headerConfig
@@ -91,7 +91,7 @@ export default class SortableTable {
   }
 
   #getSortMethod(sortType) {
-    let sortMethod = (a, b) => {
+    const sortMethod = (a, b) => {
       const valA = a[this.#fieldValue];
       const valB = b[this.#fieldValue];
 
@@ -116,13 +116,13 @@ export default class SortableTable {
     this.subElements.body.innerHTML = this.#renderRows();
   }
 
-  #updateFields() {
-    this.subElements.header.innerHTML = this.#renderFields();
+  #updateHeader() {
+    this.subElements.header.innerHTML = this.#renderHeader();
   }
 
   #updateTable() {
     this.#updateRows();
-    this.#updateFields();
+    this.#updateHeader();
   }
 
   #hasSortChanged(fieldValue, orderValue) {
