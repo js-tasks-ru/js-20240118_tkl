@@ -26,7 +26,7 @@ export default class NotificationMessage {
     return durationInSeconds + "s";
   }
 
-  #getStatus() {
+  #createStatusClass() {
     return this.#type === "success"
       ? "notification success"
       : "notification error";
@@ -34,7 +34,7 @@ export default class NotificationMessage {
 
   get #template() {
     return `
-      <div class="${this.#getStatus()}" style="--value:${this.#getDuration()}">
+      <div class="${this.#createStatusClass()}" style="--value:${this.#getDuration()}">
         <div class="timer"></div>
         <div class="inner-wrapper">
           <div class="notification-header">${this.#type}</div>
@@ -46,7 +46,7 @@ export default class NotificationMessage {
     `;
   }
 
-  #onDurationEnd = () => {
+  #onTimeEnd = () => {
     this.destroy();
   };
 
@@ -70,7 +70,7 @@ export default class NotificationMessage {
   show(target) {
     (target || document.body).append(this.#element);
 
-    this.#timerId = setTimeout(this.#onDurationEnd, this.#duration);
+    this.#timerId = setTimeout(this.#onTimeEnd, this.#duration);
   }
 
   remove() {

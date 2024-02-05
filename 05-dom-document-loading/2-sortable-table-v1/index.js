@@ -1,4 +1,4 @@
-import { BodyItem, HeaderItem } from "./Components/index.js";
+import { Row, Field } from "./Components/index.js";
 import { createElementFromHTML } from "../../utils/index.js";
 
 export default class SortableTable {
@@ -21,11 +21,11 @@ export default class SortableTable {
         <div class="sortable-table">
       
           <div data-element="header" class="sortable-table__header sortable-table__row">
-            ${this.#renderHeaderItems()}
+            ${this.#renderFields()}
           </div>
       
           <div data-element="body" class="sortable-table__body">
-            ${this.#renderBodyItems()}
+            ${this.#renderRows()}
           </div>
       
           <div data-element="loading" class="loading-line sortable-table__loading-line"></div>
@@ -54,37 +54,40 @@ export default class SortableTable {
     return [...elements].reduce(accumulateSubElements, {});
   }
 
-  #getImageTemplate() {
-    const isTemplateFunction = (config) =>
-      typeof config.template === "function";
-
-    return this.#headerConfig.find(isTemplateFunction)?.template || "";
-  }
-
   #renderTemplate() {
     return createElementFromHTML(this.#template);
   }
 
-  #renderHeaderItems() {
-    const getHeaderItemConfig = (item) =>
-      item.id !== this.#fieldValue
-        ? item
-        : { ...item, order: this.#orderValue };
+  #renderFields() {
+    const getFieldOrderValue = ({ id }) => (id === this.#fieldValue) ? this.#orderValue : "";
 
     return this.#headerConfig
-      .map((item) => new HeaderItem(getHeaderItemConfig(item)).renderTemplate())
+      .map((field) => new Field({ ...field, order: getFieldOrderValue(field) }).renderTemplate())
       .join("");
   }
 
-  #renderBodyItems() {
-    const bodyItems = this.#data.map((item) =>
-      new BodyItem({
-        ...item,
-        imageTemplate: this.#getImageTemplate(),
-      }).renderTemplate()
-    );
+  #renderRows() {
+    const rows = this.#data.map((row) => {
+      const getCellList = ({ id, template }) => {
+        const value = row[id];
 
-    return bodyItems.join("");
+        if (!value) return;
+
+        return {
+          value,
+          template,
+        };
+      };
+
+      const cellList = this.#headerConfig.map(getCellList);
+
+      return {
+        id: row.id,
+        cellList,
+      };
+    });
+
+    return rows.map((row) => new Row(row).renderTemplate()).join("");
   }
 
   #getSortMethod(sortType) {
@@ -109,16 +112,21 @@ export default class SortableTable {
     return sortMethod;
   }
 
+  #updateRows() {
+    this.subElements.body.innerHTML = this.#renderRows();
+  }
+
+  #updateFields() {
+    this.subElements.header.innerHTML = this.#renderFields();
+  }
+
+  #updateTable() {
+    this.#updateRows();
+    this.#updateFields();
+  }
+
   #hasSortChanged(fieldValue, orderValue) {
     return this.#fieldValue !== fieldValue || this.#orderValue !== orderValue;
-  }
-
-  #updateBody() {
-    this.subElements.body.innerHTML = this.#renderBodyItems();
-  }
-
-  #updateHeader() {
-    this.subElements.header.innerHTML = this.#renderHeaderItems();
   }
 
   sort(fieldValue, orderValue) {
@@ -126,7 +134,9 @@ export default class SortableTable {
     if (!this.#hasSortChanged(fieldValue, orderValue)) return;
 
     // Find the column configuration for the specified field and destructure its properties
-    const columnConfig = this.#headerConfig.find(column => column.id === fieldValue);
+    const columnConfig = this.#headerConfig.find(
+      (column) => column.id === fieldValue
+    );
     const { sortable, sortType } = columnConfig || {};
 
     // Check if the column is found and is sortable
@@ -140,8 +150,7 @@ export default class SortableTable {
     this.#data = this.#data.sort(this.#getSortMethod(sortType));
 
     // Update the table display
-    this.#updateBody();
-    this.#updateHeader();
+    this.#updateTable();
   }
 
   destroy() {

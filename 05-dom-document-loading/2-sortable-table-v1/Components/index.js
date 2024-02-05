@@ -1,3 +1,3 @@
-export { default as BodyItem } from './BodyItem.js';
-export { default as BodyItemImage } from './BodyItemImage.js';
-export { default as HeaderItem } from './HeaderItem.js';
+export { default as Row } from './Row.js';
+export { default as Cell } from './Cell.js';
+export { default as Field } from './Field.js';
