@@ -18,13 +18,13 @@ export default class SortableTable extends SortableTableV1 {
   #createListeners() {
     const { header } = this.subElements;
 
-    header.addEventListener("click", this.#onFieldClick);
+    header.addEventListener("pointerdown", this.#onFieldClick);
   }
 
   #destroyListeners() {
     const { header } = this.subElements;
 
-    header.removeEventListener("click", this.#onFieldClick);
+    header.removeEventListener("pointerdown", this.#onFieldClick);
   }
 
   #onFieldClick = (e) => {
@@ -34,12 +34,14 @@ export default class SortableTable extends SortableTableV1 {
 
     if (!sortable) return;
 
-    this.sort(id, order === "desc" ? "asc" : "desc");
+    const toggleOrder = order === "desc" ? "asc" : "desc";
+
+    this.sort(id, toggleOrder);
   };
 
   destroy() {
     super.destroy();
-    
+
     this.#destroyListeners();
   }
 }
