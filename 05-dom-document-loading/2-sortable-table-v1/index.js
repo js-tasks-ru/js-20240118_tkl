@@ -42,6 +42,14 @@ export default class SortableTable {
       `;
   }
 
+  get fieldValue() {
+    return this.#fieldValue;
+  }
+
+  get orderValue() {
+    return this.#orderValue;
+  }
+
   #getSubElements() {
     const elements = this.element.querySelectorAll("[data-element]");
 
@@ -155,6 +163,5 @@ export default class SortableTable {
 
   destroy() {
     this.element.remove();
-    this.subElements = {};
   }
 }
