@@ -2,6 +2,8 @@ import { createElementFromHTML } from "../../utils/index.js";
 
 export default class DoubleSlider {
   #activeThumb = null;
+  #thumbShiftX;
+  #sliderInnerRect;
 
   constructor({
     min = 0,
@@ -49,6 +51,7 @@ export default class DoubleSlider {
     return {
       direction: activeThumb === thumbLeft ? "left" : "right",
       sibling: activeThumb === thumbLeft ? thumbRight : thumbLeft,
+      isLeftThumb: activeThumb === thumbLeft,
     };
   }
 
@@ -67,8 +70,8 @@ export default class DoubleSlider {
   }
 
   #updateRangeCounter(thumbPosition) {
-    const { thumbLeft, from, to } = this.subElements;
-    const isLeftThumb = this.#activeThumb === thumbLeft;
+    const { from, to } = this.subElements;
+    const { isLeftThumb } = this.#getActiveThumbStats();
     const { min, max, formatValue } = this;
 
     const rangeValue = Math.round(
@@ -95,7 +98,7 @@ export default class DoubleSlider {
     return [...elements].reduce(accumulateSubElements, {});
   }
 
-  #getCurrentThumb(target = "") {
+  #getActiveThumb(target = "") {
     const { thumbLeft, thumbRight } = this.subElements;
 
     let activeThumb = [thumbLeft, thumbRight].find(
@@ -106,22 +109,29 @@ export default class DoubleSlider {
   }
 
   #onPointerdown = (e) => {
-    this.#activeThumb = this.#getCurrentThumb(e.target);
+    this.#activeThumb = this.#getActiveThumb(e.target);
 
     if (!this.#activeThumb) return;
+
+    if (!this.#sliderInnerRect) {
+      this.#sliderInnerRect = this.subElements.inner.getBoundingClientRect();
+    }
+
+    this.#setThumbShiftX(e);
 
     document.documentElement.style.cursor = "grab";
 
     this.#activeThumb.ondragstart = () => false;
-    this.#setThumbShiftX(e);
-
-    document.addEventListener("pointerup", this.#onPointerup);
-    document.addEventListener("pointermove", this.#onPointermove);
   };
 
   #setThumbShiftX = (e) => {
-    this.#activeThumb.shiftX =
-      e.clientX - this.#activeThumb.getBoundingClientRect().left;
+    const slider = this.element;
+    const inner = this.subElements.inner;
+    const thumb = this.#activeThumb;
+
+    const thumbOffset = slider.offsetLeft + inner.offsetLeft + thumb.offsetLeft;
+
+    this.#thumbShiftX = e.clientX - thumbOffset;
   };
 
   #dispatchEvent(name, detail) {
@@ -134,6 +144,8 @@ export default class DoubleSlider {
   }
 
   #onPointerup = (e) => {
+    if (!this.#activeThumb) return;
+
     const { from, to } = this;
 
     document.documentElement.style.cursor = "unset";
@@ -143,31 +155,34 @@ export default class DoubleSlider {
       to,
     });
 
-    document.removeEventListener("pointermove", this.#onPointermove);
-    document.removeEventListener("pointerup", this.#onPointerup);
-
     this.#activeThumb = null;
   };
 
   #onPointermove = (e) => {
+    if (!this.#activeThumb) return;
+
     const thumbPosition = this.#calcThumbPosition(e);
 
     this.#update(this.#filterBoundaries(thumbPosition));
   };
 
   #calcThumbPosition(e) {
-    const { inner, thumbLeft } = this.subElements;
+    const { isLeftThumb } = this.#getActiveThumbStats();
+
     const {
-      left: innerLeft,
-      right: innerRight,
-      width: innerWidth,
-    } = inner.getBoundingClientRect();
+      left: sliderLeftX,
+      width: sliderWidth,
+      right: sliderRightX = sliderLeftX + sliderWidth,
+    } = this.#sliderInnerRect;
 
-    const isLeftThumb = this.#activeThumb === thumbLeft;
-    const thumbShiftX = this.#activeThumb.shiftX;
-    const thumbRelativeX = isLeftThumb ? e.x - innerLeft : innerRight - e.x;
+    const thumbShiftX = this.#thumbShiftX;
+    const thumbWidth = this.#activeThumb.offsetWidth;
 
-    const position = ((thumbRelativeX + thumbShiftX) / innerWidth) * 100;
+    const offsetX = isLeftThumb
+      ? e.clientX - sliderLeftX - thumbShiftX + thumbWidth
+      : sliderRightX - e.clientX + thumbShiftX;
+
+    const position = (offsetX / sliderWidth) * 100;
 
     return position;
   }
@@ -179,8 +194,8 @@ export default class DoubleSlider {
     const siblingThumbOffset = sibling.style[siblingDirection];
 
     return Math.max(
-      0, // Min value
-      Math.min(position, 100 - (parseFloat(siblingThumbOffset) || 0)) // Max value
+      0,
+      Math.min(position, 100 - (parseFloat(siblingThumbOffset) || 0))
     );
   }
 
@@ -210,12 +225,16 @@ export default class DoubleSlider {
     const { inner } = this.subElements;
 
     inner.addEventListener("pointerdown", this.#onPointerdown);
+    document.addEventListener("pointerup", this.#onPointerup);
+    document.addEventListener("pointermove", this.#onPointermove);
   }
 
   #destroyListeners() {
     const { inner } = this.subElements;
 
     inner.removeEventListener("pointerdown", this.#onPointerdown);
+    document.removeEventListener("pointermove", this.#onPointermove);
+    document.removeEventListener("pointerup", this.#onPointerup);
   }
 
   destroy() {
@@ -225,11 +244,5 @@ export default class DoubleSlider {
     }
 
     this.#destroyListeners();
-  }
-}
-
-class ActiveThumb {
-  constructor(element) {
-    this.element = element;
   }
 }
