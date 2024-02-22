@@ -12,22 +12,22 @@ export default class SortableTable extends SortableTableV1 {
       this.sort(sorted.id, sorted.order);
     }
 
-    this.#createListeners();
+    this.createListeners();
   }
 
-  #createListeners() {
+  createListeners() {
     const { header } = this.subElements;
 
-    header.addEventListener("pointerdown", this.#onHeaderClick);
+    header.addEventListener("pointerdown", this.onHeaderClick);
   }
 
-  #destroyListeners() {
+  destroyListeners() {
     const { header } = this.subElements;
 
-    header.removeEventListener("pointerdown", this.#onHeaderClick);
+    header.removeEventListener("pointerdown", this.onHeaderClick);
   }
 
-  #onHeaderClick = (e) => {
+  onHeaderClick = (e) => {
     const { id, order, sortable } = e.target.closest(
       ".sortable-table__cell[data-sortable]"
     )?.dataset;
@@ -42,6 +42,6 @@ export default class SortableTable extends SortableTableV1 {
   destroy() {
     super.destroy();
 
-    this.#destroyListeners();
+    this.destroyListeners();
   }
 }
