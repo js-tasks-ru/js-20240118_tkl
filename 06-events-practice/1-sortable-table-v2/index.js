@@ -1,20 +1,16 @@
 import { default as SortableTableV1 } from "../../05-dom-document-loading/2-sortable-table-v1/index.js";
 
 export default class SortableTable extends SortableTableV1 {
-  isSortLocally;
-
   constructor(
     headersConfig = [],
     { data = [], sorted = {} } = {},
-    isSortLocally = true
+    isSortLocally = false
   ) {
     super(headersConfig, data);
 
-    if (sorted?.id && sorted?.order && isSortLocally) {
+    if (sorted?.id && sorted?.order) {
       this.sort(sorted.id, sorted.order);
     }
-
-    this.isSortLocally = isSortLocally;
 
     this.createListeners();
   }
@@ -36,22 +32,12 @@ export default class SortableTable extends SortableTableV1 {
       ".sortable-table__cell[data-sortable]"
     )?.dataset;
 
-    if (!sortable) return;
+    if (!JSON.parse(sortable)) return; // to convert string value into boolean
 
     const toggleOrder = order === "desc" ? "asc" : "desc";
 
-    if (this.isSortLocally) {
-      this.sortOnClient(id, toggleOrder);
-    } else {
-      this.sortOnServer(id, toggleOrder);
-    }
+    this.sort(id, toggleOrder);
   };
-
-  sortOnClient(id, order) {
-    this.sort(id, order);
-  }
-
-  sortOnServer(id, order) {}
 
   destroy() {
     super.destroy();

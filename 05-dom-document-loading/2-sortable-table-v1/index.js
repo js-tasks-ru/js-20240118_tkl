@@ -79,8 +79,6 @@ export default class SortableTable {
       const getCellList = ({ id, template }) => {
         const value = row[id];
 
-        if (!value) return;
-
         return {
           value,
           template,
