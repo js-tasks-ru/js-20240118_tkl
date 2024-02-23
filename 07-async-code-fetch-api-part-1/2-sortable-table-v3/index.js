@@ -14,7 +14,7 @@ export default class SortableTableV3 extends SortableTableV2 {
     headersConfig,
     { data = [], sorted = {}, isSortLocally = false, url = "" } = {}
   ) {
-    super(headersConfig, data);
+    super(headersConfig, { data, sorted });
 
     this.isSortLocally = isSortLocally;
     this.url = url;
@@ -119,14 +119,14 @@ export default class SortableTableV3 extends SortableTableV2 {
     const { header } = this.subElements;
 
     window.addEventListener("scroll", this.handleBodyScroll);
-    header.onpointerdown = this.onHeaderClick;
+    header.addEventListener("pointerdown", this.onHeaderClick);
   }
 
   destroyListeners() {
     const { header } = this.subElements;
 
     window.removeEventListener("scroll", this.handleBodyScroll);
-    header.onpointerdown = null;
+    header.removeEventListener("pointerdown", this.onHeaderClick);
   }
 
   async render(
@@ -136,7 +136,7 @@ export default class SortableTableV3 extends SortableTableV2 {
     if (this.isSortLocally) {
       this.sortOnClient(id, order);
     } else {
-      this.sortOnServer(id, order);
+      await this.sortOnServer(id, order);
     }
   }
 }
