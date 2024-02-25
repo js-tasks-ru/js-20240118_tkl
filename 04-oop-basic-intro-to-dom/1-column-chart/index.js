@@ -12,7 +12,7 @@ export default class ColumnChart {
     this.label = label;
     this.link = link;
     this.value = formatHeading(value.toLocaleString());
-    this.element = this.#createElement();
+    this.element = this.createElement();
   }
 
   get chartHeight() {
@@ -34,8 +34,8 @@ export default class ColumnChart {
     return `<div style="--value: ${colHeight}" data-tooltip="${percentage}%"></div>`;
   }
 
-  #renderColumns(data) {
-    return data.map((col) => this.#createColumn(col)).join("");
+  createColumnsTemplate() {
+    return [...this.data].map((col) => this.#createColumn(col)).join("");
   }
 
   #isLoading() {
@@ -44,7 +44,7 @@ export default class ColumnChart {
       : "column-chart_loading column-chart";
   }
 
-  #renderTemplate() {
+  renderTemplate() {
     return `
         <div class="${this.#isLoading()}" style="--chart-height: ${
       this.#chartHeight
@@ -58,15 +58,15 @@ export default class ColumnChart {
               this.value
             }</div>
             <div data-element="body" class="column-chart__chart">
-              ${this.#renderColumns(this.data)}
+              ${this.createColumnsTemplate(this.data)}
             </div>
           </div>
         </div>`;
   }
 
-  #createElement() {
+  createElement() {
     const template = document.createElement("div");
-    template.innerHTML = this.#renderTemplate();
+    template.innerHTML = this.renderTemplate();
 
     return template.firstElementChild;
   }
@@ -76,7 +76,7 @@ export default class ColumnChart {
 
     this.data = newData;
     this.element.querySelector(".column-chart__chart").innerHTML =
-      this.#renderColumns(newData);
+      this.createColumnsTemplate(newData);
   }
 
   remove() {

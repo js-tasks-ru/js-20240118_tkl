@@ -51,6 +51,8 @@
         ordersChart.update(new Date(start.value), new Date(end.value))
       });
 
+      window.ordersChart = ordersChart;
+
       const salesChart = new ColumnChart({
         url: 'api/dashboard/sales',
         range: {
