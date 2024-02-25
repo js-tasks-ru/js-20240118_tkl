@@ -18,16 +18,16 @@ export default class SortableTable extends SortableTableV1 {
   createListeners() {
     const { header } = this.subElements;
 
-    header.addEventListener("pointerdown", this.onHeaderClick);
+    header.addEventListener("pointerdown", this.#onHeaderClick);
   }
 
   destroyListeners() {
     const { header } = this.subElements;
 
-    header.removeEventListener("pointerdown", this.onHeaderClick);
+    header.removeEventListener("pointerdown", this.#onHeaderClick);
   }
 
-  onHeaderClick = (e) => {
+  #onHeaderClick = (e) => {
     const { id, order, sortable } = e.target.closest(
       ".sortable-table__cell[data-sortable]"
     )?.dataset;
