@@ -40,8 +40,8 @@ export default class ProductForm {
   }
 
   get templates() {
-    const element = () => {
-      const { title, description, quantity, status, price, discount } = this.data;
+    const element = (data = this.data) => {
+      const { title, description, quantity, status, price, discount } = this.sanitizeData(data);
 
       return `
         <div class="product-form">
@@ -67,7 +67,9 @@ export default class ProductForm {
             </div>
             <div class="form-group form-group__half_left">
               <label class="form-label">Категория</label>
-              ${this.createTemplate("subcategory-select-button")}
+              <select class="form-control" id="subcategory" name="subcategory">
+                ${this.createTemplate("subcategory-select-items")}
+              </select>
             </div>
             <div class="form-group form-group__half_left form-group__two-col">
               <fieldset>
@@ -100,7 +102,9 @@ export default class ProductForm {
       `;
     };
 
-    const imageItem = ({ source, url }) => {
+    const imageItem = (data = {}) => {
+      const { source, url } = this.sanitizeData(data);
+
       return `
         <li class="products-edit__imagelist-item sortable-list__item">
           <input type="hidden" name="url" value="${url}">
@@ -117,15 +121,9 @@ export default class ProductForm {
       `;
     };
 
-    const subcategoryList = (subcategoryItems) => {
-      return `
-        <select class="form-control" id="subcategory" name="subcategory">
-          ${subcategoryItems}
-        </select>
-      `;
-    };
+    const subcategoryItem = (data = {}) => {
+      const { categoryTitle, id, title } = this.sanitizeData(data);
 
-    const subcategoryItem = ({ categoryTitle, id, title }) => {
       return `
         <option value="${id}">${categoryTitle} > ${title}</option>
       `;
@@ -135,7 +133,6 @@ export default class ProductForm {
       element,
       imageItem,
       subcategoryItem,
-      subcategoryList,
     };
   }
 
@@ -154,6 +151,10 @@ export default class ProductForm {
 
     return this.element;
   }
+
+  sanitizeData = (data) => {
+    return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, (value = escapeHtml(value))]));
+  };
 
   updateForm = () => {
     this.renderProductImagesList();
@@ -187,21 +188,21 @@ export default class ProductForm {
     const { productForm } = this.subElements;
     const subcategory = productForm.querySelector("#subcategory");
 
-    subcategory.innerHTML = this.createTemplate("subcategory-select-button");
+    subcategory.innerHTML = this.createTemplate("subcategory-select-items");
   };
 
   createTemplate(templateName) {
-    const { createProductImagesTemplate, createSubcategoriesTemplate } = this;
+    const { createImageItemsTemplate, createSubcategoryItemsTemplate } = this;
 
     switch (templateName) {
       case "product-images-items":
-        return createProductImagesTemplate();
-      case "subcategory-select-button":
-        return createSubcategoriesTemplate();
+        return createImageItemsTemplate();
+      case "subcategory-select-items":
+        return createSubcategoryItemsTemplate();
     }
   }
 
-  createProductImagesTemplate = () => {
+  createImageItemsTemplate = () => {
     const { images } = this.data;
     const { imageItem } = this.templates;
 
@@ -210,9 +211,9 @@ export default class ProductForm {
     return imageItems;
   };
 
-  createSubcategoriesTemplate = () => {
+  createSubcategoryItemsTemplate = () => {
     const { categories } = this;
-    const { subcategoryList, subcategoryItem } = this.templates;
+    const { subcategoryItem } = this.templates;
 
     const createCategories = (category) => {
       const { title: categoryTitle, subcategories } = category;
@@ -224,7 +225,7 @@ export default class ProductForm {
 
     const subcategoryItems = categories.map(createCategories).join("");
 
-    return subcategoryList(subcategoryItems);
+    return subcategoryItems;
   };
 
   handleImageMousedown = (e) => {
@@ -400,7 +401,7 @@ export default class ProductForm {
     });
 
     this.element.dispatchEvent(event);
-  }
+  };
 
   remove() {
     this.element.remove();
