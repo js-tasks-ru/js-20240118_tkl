@@ -133,8 +133,10 @@ export default class RangePicker {
     };
 
     const _cellTemplate = ({ value, day, classList, startFrom }) => {
+      const style = startFrom ? `style="--start-from: ${startFrom}"` : "";
+
       return `
-        <button type="button" class="${classList}" data-value="${value}" ${startFrom}>${day}</button>
+        <button type="button" class="${classList}" data-value="${value}" ${style}>${day}</button>
       `;
     };
 
@@ -176,27 +178,22 @@ export default class RangePicker {
 
       cell: (date) => {
         const { from, to } = this;
-
-        const isFirstDayOfMonth = RangePicker.isFirstDayOfMonth(date);
-        const isBetweenDate = RangePicker.isDateBetween(date, from, to);
-        const isFromDate = from !== null ? RangePicker.areDatesEqual(date, from) : false;
-        const isToDate = to !== null ? RangePicker.areDatesEqual(date, to) : false;
+        const { isFirstDayOfMonth, isDateBetween, areDatesEqual, getFirstDayOfMonth } = RangePicker;
 
         const classListArray = ["rangepicker__cell"];
-        if (isBetweenDate) {
+
+        if (isDateBetween(date, from, to)) {
           classListArray.push("rangepicker__selected-between");
         } else {
-          if (isFromDate) classListArray.push("rangepicker__selected-from");
-          if (isToDate) classListArray.push("rangepicker__selected-to");
+          from && areDatesEqual(date, from) && classListArray.push("rangepicker__selected-from");
+          to && areDatesEqual(date, to) && classListArray.push("rangepicker__selected-to");
         }
-
-        const startFrom = isFirstDayOfMonth ? `style="--start-from: ${RangePicker.getFirstDayOfMonth(date)}"` : "";
 
         const props = {
           value: date.toISOString(),
           day: date.getDate(),
           classList: classListArray.join(" "),
-          startFrom,
+          startFrom: isFirstDayOfMonth(date) && getFirstDayOfMonth(date),
         };
 
         return _cellTemplate(props);
@@ -337,13 +334,15 @@ export default class RangePicker {
     selector.removeEventListener("click", this.handleSelectorClick);
   };
 
-  dispatchEvent = (eventName, detail = {}) => {
-    const event = new CustomEvent(eventName, {
-      bubbles: true,
-      detail,
-    });
+  dispatchEvent = (eventName) => {
+    const { from, to } = this;
 
-    this.element.dispatchEvent(event);
+    const options = {
+      bubbles: true,
+      detail: { from, to },
+    };
+
+    this.element.dispatchEvent(new CustomEvent(eventName, options));
   };
 
   remove = () => {
