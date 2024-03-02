@@ -14,7 +14,7 @@ export default class RangePicker {
     this.to = to;
     this.currentMonth = this.from || new Date();
 
-    this.element = this.createElement();
+    this.element = this.createElement("element");
     this.selectSubElements();
     this.createListeners();
   }
@@ -205,7 +205,9 @@ export default class RangePicker {
   }
 
   createTemplate = (templateName, data) => {
-    return this.#templates[templateName](data);
+    const template = this.#templates[templateName];
+
+    return (template && template(data)) ?? "";
   };
 
   selectSubElements = () => {
@@ -220,9 +222,11 @@ export default class RangePicker {
     selector.innerHTML = this.createTemplate("selector");
   };
 
-  createElement = () => {
-    return createElementFromHTML(this.#templates.element());
-  };
+  createElement(templateName, data) {
+    const { createTemplate } = this;
+
+    return createElementFromHTML(createTemplate(templateName, data));
+  }
 
   toggle = () => {
     const isElementOpen = this.element.classList.toggle("rangepicker_open");
