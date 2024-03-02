@@ -1,21 +1,41 @@
 import { createElementFromHTML } from "../../utils/index.js";
 
 export default class RangePicker {
+  static #locale = "ru-RU";
+
+  subElements = {};
+  element;
+  currentMonth;
+  from;
+  to;
+
+  constructor({ from, to } = {}) {
+    // if (RangePicker.#instance) {
+    //   return RangePicker.#instance;
+    // }
+
+    this.from = from;
+    this.to = to;
+    this.currentMonth = this.from || new Date();
+
+    this.element = this.createElement();
+    this.selectSubElements();
+    this.createListeners();
+  }
+
+  static formatLocaleDate = (date) => {
+    return date.toLocaleDateString(this.#locale, {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  };
+
   static getDaysBetweenDates = (from, to) => {
     const millisecondsToDays = (ms) => ms / (24 * 60 * 60 * 1000);
     const milliseconds = Math.abs(new Date(to).setHours(24) - new Date(from));
 
     return millisecondsToDays(milliseconds);
-  };
-
-  static compareDates = (date1, date2) => {
-    if (date1 > date2) {
-      return date1;
-    } else if (date2 > date1) {
-      return date2;
-    } else {
-      return "equal";
-    }
   };
 
   static areDatesEqual = (date1, date2) => {
@@ -43,13 +63,6 @@ export default class RangePicker {
     return dayOfWeek;
   };
 
-  static formatLocaleDate = (date) => {
-    const options = { year: "numeric", month: "2-digit", day: "2-digit" };
-    const dateString = date.toLocaleDateString("ru-RU", options);
-
-    return dateString;
-  };
-
   static getNextMonth = (date) => {
     const month = date.getMonth();
     const year = month === 11 ? date.getFullYear() + 1 : date.getFullYear();
@@ -70,28 +83,8 @@ export default class RangePicker {
     return date.toLocaleString("ru-RU", { month: "long" });
   };
 
-  static getDaysInMonth = (date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-
-    return new Date(year, month + 1, 0).getDate();
-  };
-
-  subElements = {};
-  currentMonth;
-  element;
-  from;
-  to;
-
-  constructor({ from, to } = {}) {
-    this.from = from;
-    this.to = to;
-    this.currentMonth = this.from;
-
-    this.element = this.createElement();
-
-    this.selectSubElements();
-    this.createListeners();
+  static getDaysInMonth(date) {
+    return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   }
 
   get #templates() {
@@ -154,8 +147,10 @@ export default class RangePicker {
 
     return {
       element: () => {
-        const from = RangePicker.formatLocaleDate(this.from);
-        const to = RangePicker.formatLocaleDate(this.to);
+        const { formatLocaleDate } = RangePicker;
+
+        const from = formatLocaleDate(this.from);
+        const to = formatLocaleDate(this.to);
 
         return _elementTemplate(from, to);
       },
@@ -208,21 +203,21 @@ export default class RangePicker {
     return this.#templates[templateName](data);
   };
 
-  selectSubElements() {
+  selectSubElements = () => {
     this.element.querySelectorAll("[data-elem]").forEach((element) => {
       this.subElements[element.dataset.elem] = element;
     });
-  }
+  };
 
-  render() {
+  render = () => {
     const { selector } = this.subElements;
 
     selector.innerHTML = this.createTemplate("selector");
-  }
+  };
 
-  createElement() {
+  createElement = () => {
     return createElementFromHTML(this.#templates.element());
-  }
+  };
 
   toggle = () => {
     const isElementOpen = this.element.classList.toggle("rangepicker_open");
@@ -239,36 +234,55 @@ export default class RangePicker {
     this.render();
   };
 
-  updateInput() {
+  updateInput = () => {
     const { from, to } = this.subElements;
+    const { formatLocaleDate } = RangePicker;
 
-    from.innerHTML = RangePicker.formatLocaleDate(this.from);
-    to.innerHTML = RangePicker.formatLocaleDate(this.to);
-  }
+    from.innerHTML = formatLocaleDate(this.from);
+    to.innerHTML = formatLocaleDate(this.to);
+  };
 
-  updateRange = (date) => {
-    if (this.from && this.to) {
-      this.from = date;
-      this.to = null;
-    } else if (this.from !== null && this.to === null) {
-      const from = new Date(Math.min(this.from, date));
-      const to = new Date(Math.max(this.from, date));
+  updateRange = (value) => {
+    const { resetRangeStart, setCompleteRange, render, from, to } = this;
+    const date = new Date(value);
 
-      this.from = from;
-      this.to = to;
+    const isRangeComplete = from && to;
+    const isRangePartial = from !== null && to === null;
 
-      this.dispatchEvent("date-select", { from, to });
-      this.updateInput();
-      this.toggle();
+    if (isRangeComplete) {
+      resetRangeStart(date);
+    } else if (isRangePartial) {
+      setCompleteRange(date);
     }
 
-    this.render();
+    render();
+  };
+
+  resetRangeStart = (date) => {
+    this.from = date;
+    this.to = null;
+  };
+
+  setCompleteRange = (date) => {
+    const { toggle, updateInput, dispatchEvent } = this;
+
+    const from = new Date(Math.min(this.from, date));
+    const to = new Date(Math.max(this.from, date));
+
+    this.from = from;
+    this.to = to;
+
+    toggle();
+    updateInput();
+    dispatchEvent("date-select");
   };
 
   updateMonth = (action) => {
+    const { getPrevMonth, getNextMonth } = RangePicker;
+
     const actionHandlers = {
-      next: () => RangePicker.getNextMonth(this.currentMonth),
-      prev: () => RangePicker.getPrevMonth(this.currentMonth),
+      next: () => getNextMonth(this.currentMonth),
+      prev: () => getPrevMonth(this.currentMonth),
     };
 
     const updateFunction = actionHandlers[action];
@@ -280,38 +294,39 @@ export default class RangePicker {
   };
 
   handleWindowClick = (e) => {
-    const { element } = this;
+    const { element, toggle } = this;
 
-    if (!element.contains(e.target)) {
-      this.toggle();
-    }
+    if (element.contains(e.target)) return;
+
+    toggle();
   };
 
   handleSelectorClick = (e) => {
     e.stopPropagation();
 
+    const { updateMonth, updateRange } = this;
     const { value, action } = e.target?.dataset;
 
     if (action) {
-      this.updateMonth(action);
+      updateMonth(action);
     } else if (value) {
-      this.updateRange(new Date(value));
+      updateRange(value);
     }
   };
 
-  createListeners() {
+  createListeners = () => {
     const { input, selector } = this.subElements;
 
     input.addEventListener("click", this.handleInputClick);
     selector.addEventListener("click", this.handleSelectorClick);
-  }
+  };
 
-  destroyListeners() {
+  destroyListeners = () => {
     const { input, selector } = this.subElements;
 
     input.removeEventListener("click", this.handleInputClick);
     selector.removeEventListener("click", this.handleSelectorClick);
-  }
+  };
 
   dispatchEvent = (eventName, detail = {}) => {
     const event = new CustomEvent(eventName, {
@@ -322,15 +337,15 @@ export default class RangePicker {
     this.element.dispatchEvent(event);
   };
 
-  remove() {
+  remove = () => {
     this.element.remove();
-  }
+  };
 
-  destroy() {
+  destroy = () => {
     if (this.element) {
       this.remove();
 
       this.destroyListeners();
     }
-  }
+  };
 }
