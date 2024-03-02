@@ -6,7 +6,13 @@ const IMGUR_CLIENT_ID = "28aaa2e823b03b1";
 const BACKEND_URL = "https://course-js.javascript.ru";
 
 export default class ProductForm {
-  subElements = {};
+  static sanitizeData = (data = {}) => {
+    const entries = Object.entries(data);
+    const sanitizeValues = ([key, value]) => [key, (value = escapeHtml(value))];
+
+    return Object.fromEntries(entries.map(sanitizeValues));
+  };
+
   data = {
     title: "",
     description: "",
@@ -17,16 +23,15 @@ export default class ProductForm {
     discount: 0,
     images: [],
   };
+  subElements = {};
   categories = [];
 
   constructor(productId) {
     this.productId = productId;
-    this.element = this.createElement();
+    this.element = this.createElement("element");
 
     this.selectSubElements();
     this.createListeners();
-
-    window.productForm = this;
   }
 
   selectSubElements() {
@@ -39,10 +44,11 @@ export default class ProductForm {
     return this.productId !== undefined;
   }
 
-  get templates() {
-    const element = (data = this.data) => {
-      const { title, description, quantity, status, price, discount } = this.sanitizeData(data);
+  get #templates() {
+    const { createTemplate } = this;
+    const { sanitizeData } = ProductForm;
 
+    const _elementTemplate = ({ title, description, quantity, status, price, discount }) => {
       return `
         <div class="product-form">
           <form data-element="productForm" class="form-grid">
@@ -60,7 +66,7 @@ export default class ProductForm {
               <label class="form-label">Фото</label>
               <div data-element="imageListContainer">
                 <ul class="sortable-list">
-                  ${this.createTemplate("product-images-items")}
+                  ${createTemplate("images")}
                 </ul>
               </div>
               <button id="uploadImage" type="button" name="uploadImage" class="button-primary-outline"><span>Загрузить</span></button>
@@ -68,7 +74,7 @@ export default class ProductForm {
             <div class="form-group form-group__half_left">
               <label class="form-label">Категория</label>
               <select class="form-control" id="subcategory" name="subcategory">
-                ${this.createTemplate("subcategory-select-items")}
+                ${createTemplate("subcategory")}
               </select>
             </div>
             <div class="form-group form-group__half_left form-group__two-col">
@@ -102,9 +108,7 @@ export default class ProductForm {
       `;
     };
 
-    const imageItem = (data = {}) => {
-      const { source, url } = this.sanitizeData(data);
-
+    const _imageTemplate = ({ source, url }) => {
       return `
         <li class="products-edit__imagelist-item sortable-list__item">
           <input type="hidden" name="url" value="${url}">
@@ -121,18 +125,39 @@ export default class ProductForm {
       `;
     };
 
-    const subcategoryItem = (data = {}) => {
-      const { categoryTitle, id, title } = this.sanitizeData(data);
-
+    const _subcategoryTemplate = ({ categoryTitle, id, title }) => {
       return `
         <option value="${id}">${categoryTitle} > ${title}</option>
       `;
     };
 
     return {
-      element,
-      imageItem,
-      subcategoryItem,
+      element: (data = this.data) => {
+        const props = sanitizeData(data);
+
+        return _elementTemplate(props);
+      },
+      images: (data = this.data.images) => {
+        return data.map((image) => createTemplate("image", image)).join("");
+      },
+      image: (data = "") => {
+        const props = sanitizeData(data);
+
+        return _imageTemplate(props);
+      },
+      subcategory: (categories = this.categories) => {
+        const createSubcategory = (categoryTitle, subcategory) => {
+          const props = sanitizeData({ categoryTitle, ...subcategory });
+
+          return _subcategoryTemplate(props);
+        };
+
+        const createCategory = ({ title: categoryTitle, subcategories }) => {
+          return subcategories.map((subcategory) => createSubcategory(categoryTitle, subcategory)).join("");
+        };
+
+        return categories.map(createCategory).join("");
+      },
     };
   }
 
@@ -152,23 +177,20 @@ export default class ProductForm {
     return this.element;
   }
 
-  sanitizeData = (data) => {
-    return Object.fromEntries(Object.entries(data).map(([key, value]) => [key, (value = escapeHtml(value))]));
-  };
-
   updateForm = () => {
-    this.renderProductImagesList();
-    this.renderSubcategorySelectButton();
-    this.setInputValues();
+    const { createTemplate, updateInputFields, data } = this;
+    const { productForm, imageListContainer } = this.subElements;
+
+    const imageList = imageListContainer.querySelector('.sortable-list');
+    const subcategory = productForm.querySelector("#subcategory");
+
+    imageList.innerHTML = createTemplate("images", data.images);
+    subcategory.innerHTML = createTemplate("subcategory");
+
+    updateInputFields();
   };
 
-  renderProductImagesList = () => {
-    const { imageListContainer } = this.subElements;
-
-    imageListContainer.firstElementChild.innerHTML = this.createTemplate("product-images-items");
-  };
-
-  setInputValues = () => {
+  updateInputFields = () => {
     const { productForm } = this.subElements;
 
     const formElements = [...productForm.elements];
@@ -184,63 +206,22 @@ export default class ProductForm {
     formElements.forEach(updateField);
   };
 
-  renderSubcategorySelectButton = () => {
-    const { productForm } = this.subElements;
-    const subcategory = productForm.querySelector("#subcategory");
+  createTemplate = (templateName, data) => {
+    const template = this.#templates[templateName];
 
-    subcategory.innerHTML = this.createTemplate("subcategory-select-items");
-  };
-
-  createTemplate(templateName) {
-    const { createImageItemsTemplate, createSubcategoryItemsTemplate } = this;
-
-    switch (templateName) {
-      case "product-images-items":
-        return createImageItemsTemplate();
-      case "subcategory-select-items":
-        return createSubcategoryItemsTemplate();
-    }
-  }
-
-  createImageItemsTemplate = () => {
-    const { images } = this.data;
-    const { imageItem } = this.templates;
-
-    const imageItems = images.map((image) => imageItem(image)).join("");
-
-    return imageItems;
-  };
-
-  createSubcategoryItemsTemplate = () => {
-    const { categories } = this;
-    const { subcategoryItem } = this.templates;
-
-    const createCategories = (category) => {
-      const { title: categoryTitle, subcategories } = category;
-
-      const createSubcategory = (subcategory) => subcategoryItem({ categoryTitle, ...subcategory });
-
-      return subcategories.map(createSubcategory).join("");
-    };
-
-    const subcategoryItems = categories.map(createCategories).join("");
-
-    return subcategoryItems;
+    return (template && template(data)) ?? "";
   };
 
   handleImageMousedown = (e) => {
-    const target = e.target;
+    const { deleteHandle, grabHandle } = e.target?.dataset;
 
-    if (target.matches("[data-delete-handle]")) {
-      this.handleImageItemDelete(target);
+    const isDeleteAction = deleteHandle === "";
+    const isDragAction = grabHandle === "";
 
-      return;
-    }
-
-    if (target.matches("[data-grab-handle]")) {
-      this.handleImageItemDrag(e);
-
-      return;
+    if (isDeleteAction) {
+      this.deleteImage(e.target);
+    } else if (isDragAction) {
+      this.dragImage(e);
     }
   };
 
@@ -265,7 +246,7 @@ export default class ProductForm {
 
     const formData = new FormData(productForm);
 
-    const result = await this.save(formData);
+    await this.save(formData);
   };
 
   handleProductImageUpload = (e) => {
@@ -291,7 +272,7 @@ export default class ProductForm {
 
           uploadImageButton.classList.remove("is-loading");
 
-          const imageElement = this.createImageElement(response.data.link, file.name);
+          const imageElement = this.createElement("image", { source: file.name, url: response.data.link });
 
           imageListContainer.firstElementChild.appendChild(imageElement);
         }
@@ -318,12 +299,6 @@ export default class ProductForm {
     }
   };
 
-  createImageElement(url, source) {
-    const { imageItem } = this.templates;
-
-    return createElementFromHTML(imageItem({ url, source }));
-  }
-
   uploadImage = async (body) => {
     const url = new URL("https://api.imgur.com/3/image");
     const headers = new Headers({ Authorization: IMGUR_CLIENT_ID });
@@ -337,14 +312,16 @@ export default class ProductForm {
     return response;
   };
 
-  handleImageItemDelete = (target) => {
+  deleteImage = (target) => {
     target.closest("li.products-edit__imagelist-item").remove();
   };
 
-  handleImageItemDrag = (e) => {};
+  dragImage = (e) => {};
 
-  createElement() {
-    return createElementFromHTML(this.templates.element());
+  createElement(templateName, data) {
+    const { createTemplate } = this;
+
+    return createElementFromHTML(createTemplate(templateName, data));
   }
 
   createListeners() {
