@@ -10,10 +10,6 @@ export default class RangePicker {
   to;
 
   constructor({ from, to } = {}) {
-    // if (RangePicker.#instance) {
-    //   return RangePicker.#instance;
-    // }
-
     this.from = from;
     this.to = to;
     this.currentMonth = this.from || new Date();
@@ -29,13 +25,6 @@ export default class RangePicker {
       month: "2-digit",
       year: "numeric",
     });
-  };
-
-  static getDaysBetweenDates = (from, to) => {
-    const millisecondsToDays = (ms) => ms / (24 * 60 * 60 * 1000);
-    const milliseconds = Math.abs(new Date(to).setHours(24) - new Date(from));
-
-    return millisecondsToDays(milliseconds);
   };
 
   static areDatesEqual = (date1, date2) => {
@@ -79,18 +68,27 @@ export default class RangePicker {
     return new Date(year, month, day);
   };
 
-  static getMonthName = (date) => {
-    return date.toLocaleString("ru-RU", { month: "long" });
+  static getLocaleMonth = (date) => {
+    return date.toLocaleString(this.#locale, { month: "long" });
   };
 
-  static getDaysInMonth(date) {
+  static getDaysInMonth = (date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
-  }
+  };
+
+  static createMonthArray = (date) => {
+    const year = date.getFullYear();
+    const month = date.getMonth();
+    const daysInMonth = this.getDaysInMonth(date);
+    const createDayDate = (_, i) => new Date(year, month, i + 1);
+
+    return Array.from({ length: daysInMonth }, createDayDate);
+  };
 
   get #templates() {
     const { createTemplate } = this;
 
-    const _elementTemplate = (from, to) => {
+    const _elementTemplate = ({ from, to }) => {
       return `
         <div class="rangepicker">
           <div class="rangepicker__input" data-elem="input">
@@ -102,7 +100,7 @@ export default class RangePicker {
       `;
     };
 
-    const _selectorTemplate = (currentMonth, nextMonth) => {
+    const _selectorTemplate = ({ currentMonth, nextMonth }) => {
       return `
         <div class="rangepicker__selector-arrow"></div>
         <div data-action="prev" class="rangepicker__selector-control-left"></div>
@@ -112,11 +110,11 @@ export default class RangePicker {
       `;
     };
 
-    const _calendarTemplate = (monthName, gridItems) => {
+    const _calendarTemplate = ({ localeMonth, gridItems }) => {
       return `
         <div class="rangepicker__calendar">
           <div class="rangepicker__month-indicator">
-            <time datetime="${monthName}">${monthName}</time>
+            <time datetime="${localeMonth}">${localeMonth}</time>
           </div>
           <div class="rangepicker__day-of-week">
             <div>Пн</div>
@@ -134,12 +132,7 @@ export default class RangePicker {
       `;
     };
 
-    const _cellTemplate = (data) => {
-      const { date, classList, startFrom } = data;
-
-      const value = date.toISOString();
-      const day = date.getDate();
-
+    const _cellTemplate = ({ value, day, classList, startFrom }) => {
       return `
         <button type="button" class="${classList}" data-value="${value}" ${startFrom}>${day}</button>
       `;
@@ -149,30 +142,36 @@ export default class RangePicker {
       element: () => {
         const { formatLocaleDate } = RangePicker;
 
-        const from = formatLocaleDate(this.from);
-        const to = formatLocaleDate(this.to);
+        const props = {
+          from: formatLocaleDate(this.from),
+          to: formatLocaleDate(this.to),
+        };
 
-        return _elementTemplate(from, to);
+        return _elementTemplate(props);
       },
       selector: () => {
         const { currentMonth } = this;
         const { getNextMonth } = RangePicker;
 
-        return _selectorTemplate(currentMonth, getNextMonth(currentMonth));
+        const props = {
+          currentMonth,
+          nextMonth: getNextMonth(currentMonth),
+        };
+
+        return _selectorTemplate(props);
       },
       calendar: (date) => {
-        const { getMonthName, getDaysInMonth } = RangePicker;
+        const { getLocaleMonth, createMonthArray } = RangePicker;
 
-        const monthName = getMonthName(date);
-        const daysInMonth = getDaysInMonth(date);
+        const calendarDates = createMonthArray(date);
+        const createCellTemplate = (date) => createTemplate("cell", date);
 
-        const year = date.getFullYear();
-        const monthIndex = date.getMonth();
+        const props = {
+          localeMonth: getLocaleMonth(date),
+          gridItems: calendarDates.map(createCellTemplate).join(""),
+        };
 
-        const dates = Array.from({ length: daysInMonth }, (_, i) => new Date(year, monthIndex, i + 1));
-        const gridItems = dates.map((date) => createTemplate("cell", date)).join("");
-
-        return _calendarTemplate(monthName, gridItems);
+        return _calendarTemplate(props);
       },
 
       cell: (date) => {
@@ -191,10 +190,16 @@ export default class RangePicker {
           if (isToDate) classListArray.push("rangepicker__selected-to");
         }
 
-        const classList = classListArray.join(" ");
         const startFrom = isFirstDayOfMonth ? `style="--start-from: ${RangePicker.getFirstDayOfMonth(date)}"` : "";
 
-        return _cellTemplate({ date, classList, startFrom });
+        const props = {
+          value: date.toISOString(),
+          day: date.getDate(),
+          classList: classListArray.join(" "),
+          startFrom,
+        };
+
+        return _cellTemplate(props);
       },
     };
   }
