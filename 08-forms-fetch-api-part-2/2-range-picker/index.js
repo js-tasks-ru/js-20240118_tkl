@@ -221,6 +221,17 @@ export default class RangePicker {
     selector.innerHTML = this.createTemplate("selector");
   };
 
+  renderCalendar = () => {
+    const { selector } = this.subElements;
+    const { currentMonth, createTemplate } = this;
+    const { getNextMonth } = RangePicker;
+
+    const [firstCalendar, secondCalendar] = selector.querySelectorAll(".rangepicker__calendar");
+
+    firstCalendar.outerHTML = createTemplate("calendar", currentMonth);
+    secondCalendar.outerHTML = createTemplate("calendar", getNextMonth(currentMonth));
+  };
+
   createElement(templateName, data) {
     const { createTemplate } = this;
 
@@ -253,7 +264,7 @@ export default class RangePicker {
   highlightCell = (date) => {
     const { selector } = this.subElements;
 
-    const targetCell = selector.querySelector(`[data-value="${date.toISOString()}"]`)
+    const targetCell = selector.querySelector(`[data-value="${date.toISOString()}"]`);
 
     targetCell.classList.add("rangepicker__selected-from");
   };
@@ -272,7 +283,7 @@ export default class RangePicker {
   };
 
   updateRange = (value) => {
-    const { resetRangeStart, setCompleteRange, render, from, to } = this;
+    const { resetRangeStart, setCompleteRange, renderCalendar, from, to } = this;
     const date = new Date(value);
 
     const isRangeComplete = from && to;
@@ -282,7 +293,7 @@ export default class RangePicker {
       resetRangeStart(date);
     } else if (isRangePartial) {
       setCompleteRange(date);
-      render();
+      renderCalendar();
     }
   };
 
@@ -311,6 +322,7 @@ export default class RangePicker {
   };
 
   updateMonth = (action) => {
+    const { renderCalendar } = this;
     const { getPrevMonth, getNextMonth } = RangePicker;
 
     const actionHandlers = {
@@ -323,7 +335,7 @@ export default class RangePicker {
     if (!updateFunction) return;
 
     this.currentMonth = updateFunction();
-    this.render();
+    renderCalendar();
   };
 
   handleWindowClick = (e) => {
