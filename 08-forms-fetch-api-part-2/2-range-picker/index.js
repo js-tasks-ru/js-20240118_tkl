@@ -17,6 +17,8 @@ export default class RangePicker {
     this.element = this.createElement("element");
     this.selectSubElements();
     this.createListeners();
+
+    window.rangePicker = this;
   }
 
   static formatLocaleDate = (date) => {
@@ -248,6 +250,27 @@ export default class RangePicker {
     to.innerHTML = formatLocaleDate(this.to);
   };
 
+  highlightCell = (date) => {
+    const { selector } = this.subElements;
+
+    const targetCell = selector.querySelector(`[data-value="${date.toISOString()}"]`)
+
+    targetCell.classList.add("rangepicker__selected-from");
+  };
+
+  resetCellSelection = () => {
+    const { selector } = this.subElements;
+    const classNamesToRemove = [
+      "rangepicker__selected-from",
+      "rangepicker__selected-to",
+      "rangepicker__selected-between",
+    ];
+
+    const selectedCellsCollection = selector.querySelectorAll(`[class*="rangepicker__selected"]`);
+
+    selectedCellsCollection.forEach((cell) => cell.classList.remove(...classNamesToRemove));
+  };
+
   updateRange = (value) => {
     const { resetRangeStart, setCompleteRange, render, from, to } = this;
     const date = new Date(value);
@@ -259,14 +282,18 @@ export default class RangePicker {
       resetRangeStart(date);
     } else if (isRangePartial) {
       setCompleteRange(date);
+      render();
     }
-
-    render();
   };
 
   resetRangeStart = (date) => {
+    const { highlightCell, resetCellSelection } = this;
+
     this.from = date;
     this.to = null;
+
+    resetCellSelection();
+    highlightCell(date);
   };
 
   setCompleteRange = (date) => {
