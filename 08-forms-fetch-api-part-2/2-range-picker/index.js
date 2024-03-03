@@ -17,8 +17,6 @@ export default class RangePicker {
     this.element = this.createElement("element");
     this.selectSubElements();
     this.createListeners();
-
-    window.rangePicker = this;
   }
 
   static formatLocaleDate = (date) => {
